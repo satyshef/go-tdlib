@@ -679,16 +679,13 @@ func (client *Client) GetMe() (*User, error) {
 	result, err := client.SendAndCatch(UpdateData{
 		"@type": "getMe",
 	})
-
 	if err != nil {
 		return nil, err
 	}
-
 	//нужно убрать
 	if result.Data["@type"].(string) == "error" {
 		return nil, fmt.Errorf("%s", result.Raw)
 	}
-
 	var user User
 	err = json.Unmarshal(result.Raw, &user)
 
@@ -698,7 +695,7 @@ func (client *Client) GetMe() (*User, error) {
 
 // GetUser Returns information about a user by their identifier. This is an offline request if the current user is not a bot
 // @param userID User identifier
-func (client *Client) GetUser(userID int32) (*User, error) {
+func (client *Client) GetUser(userID int64) (*User, error) {
 	result, err := client.SendAndCatch(UpdateData{
 		"@type":   "getUser",
 		"user_id": userID,
@@ -3486,7 +3483,7 @@ func (client *Client) ReadAllChatMentions(chatID int64) (*Ok, error) {
 // CreatePrivateChat Returns an existing chat corresponding to a given user
 // @param userID User identifier
 // @param force If true, the chat will be created without network request. In this case all information about the chat except its type, title and photo can be incorrect
-func (client *Client) CreatePrivateChat(userID int32, force bool) (*Chat, error) {
+func (client *Client) CreatePrivateChat(userID int64, force bool) (*Chat, error) {
 	result, err := client.SendAndCatch(UpdateData{
 		"@type":   "createPrivateChat",
 		"user_id": userID,
@@ -4286,7 +4283,7 @@ func (client *Client) LeaveChat(chatID int64) (*Ok, error) {
 // @param chatID Chat identifier
 // @param userID Identifier of the user
 // @param forwardLimit The number of earlier messages from the chat to be forwarded to the new member; up to 100. Ignored for supergroups and channels
-func (client *Client) AddChatMember(chatID int64, userID int32, forwardLimit int32) (*Ok, error) {
+func (client *Client) AddChatMember(chatID int64, userID int64, forwardLimit int32) (*Ok, error) {
 	result, err := client.SendAndCatch(UpdateData{
 		"@type":         "addChatMember",
 		"chat_id":       chatID,
@@ -5645,7 +5642,7 @@ func (client *Client) SharePhoneNumber(userID int32) (*Ok, error) {
 // @param userID User identifier
 // @param offset The number of photos to skip; must be non-negative
 // @param limit The maximum number of photos to be returned; up to 100
-func (client *Client) GetUserProfilePhotos(userID int32, offset int32, limit int32) (*ChatPhotos, error) {
+func (client *Client) GetUserProfilePhotos(userID int64, offset int32, limit int32) (*ChatPhotos, error) {
 	result, err := client.SendAndCatch(UpdateData{
 		"@type":   "getUserProfilePhotos",
 		"user_id": userID,
