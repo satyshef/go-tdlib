@@ -184,6 +184,15 @@ const (
 	SecretChatStateClosedType  SecretChatStateEnum = "secretChatStateClosed"
 )
 
+// MessageSenderEnum Alias for abstract MessageSender 'Sub-Classes', used as constant-enum here
+type MessageSenderEnum string
+
+// MessageSender enums
+const (
+	MessageSenderUserType MessageSenderEnum = "messageSenderUser"
+	MessageSenderChatType MessageSenderEnum = "messageSenderChat"
+)
+
 // MessageForwardOriginEnum Alias for abstract MessageForwardOrigin 'Sub-Classes', used as constant-enum here
 type MessageForwardOriginEnum string
 
@@ -1304,6 +1313,11 @@ type SupergroupMembersFilter interface {
 // SecretChatState Describes the current secret chat state
 type SecretChatState interface {
 	GetSecretChatStateEnum() SecretChatStateEnum
+}
+
+// MessageSender Contains information about the sender of a message
+type MessageSender interface {
+	GetMessageSenderEnum() MessageSenderEnum
 }
 
 // MessageForwardOrigin Contains information about the origin of a forwarded message
@@ -4797,6 +4811,98 @@ func (chatMemberStatusBanned *ChatMemberStatusBanned) GetChatMemberStatusEnum() 
 	return ChatMemberStatusBannedType
 }
 
+// ChatMember A user with information about joining/leaving a chat
+type ChatMember struct {
+	tdCommon
+	UserID         int64            `json:"user_id"`          // User identifier of the chat member
+	InviterUserID  int64            `json:"inviter_user_id"`  // Identifier of a user that invited/promoted/banned this member in the chat; 0 if unknown
+	JoinedChatDate int32            `json:"joined_chat_date"` // Point in time (Unix timestamp) when the user joined the chat
+	Status         ChatMemberStatus `json:"status"`           // Status of the member in the chat
+	BotInfo        *BotInfo         `json:"bot_info"`         // If the user is a bot, information about the bot; may be null. Can be null even for a bot if the bot is not the chat member
+}
+
+// MessageType return the string telegram-type of ChatMember
+func (chatMember *ChatMember) MessageType() string {
+	return "chatMember"
+}
+
+// NewChatMember creates a new ChatMember
+//
+// @param userID User identifier of the chat member
+// @param inviterUserID Identifier of a user that invited/promoted/banned this member in the chat; 0 if unknown
+// @param joinedChatDate Point in time (Unix timestamp) when the user joined the chat
+// @param status Status of the member in the chat
+// @param botInfo If the user is a bot, information about the bot; may be null. Can be null even for a bot if the bot is not the chat member
+func NewChatMember(userID int64, inviterUserID int64, joinedChatDate int32, status ChatMemberStatus, botInfo *BotInfo) *ChatMember {
+	chatMemberTemp := ChatMember{
+		tdCommon:       tdCommon{Type: "chatMember"},
+		UserID:         userID,
+		InviterUserID:  inviterUserID,
+		JoinedChatDate: joinedChatDate,
+		Status:         status,
+		BotInfo:        botInfo,
+	}
+
+	return &chatMemberTemp
+}
+
+// UnmarshalJSON unmarshal to json
+func (chatMember *ChatMember) UnmarshalJSON(b []byte) error {
+	var objMap map[string]*json.RawMessage
+	err := json.Unmarshal(b, &objMap)
+	if err != nil {
+		return err
+	}
+	tempObj := struct {
+		tdCommon
+		UserID         int64    `json:"user_id"`          // User identifier of the chat member
+		InviterUserID  int64    `json:"inviter_user_id"`  // Identifier of a user that invited/promoted/banned this member in the chat; 0 if unknown
+		JoinedChatDate int32    `json:"joined_chat_date"` // Point in time (Unix timestamp) when the user joined the chat
+		BotInfo        *BotInfo `json:"bot_info"`         // If the user is a bot, information about the bot; may be null. Can be null even for a bot if the bot is not the chat member
+	}{}
+	err = json.Unmarshal(b, &tempObj)
+	if err != nil {
+		return err
+	}
+
+	chatMember.tdCommon = tempObj.tdCommon
+	chatMember.UserID = tempObj.UserID
+	chatMember.InviterUserID = tempObj.InviterUserID
+	chatMember.JoinedChatDate = tempObj.JoinedChatDate
+	chatMember.BotInfo = tempObj.BotInfo
+
+	fieldStatus, _ := unmarshalChatMemberStatus(objMap["status"])
+	chatMember.Status = fieldStatus
+
+	return nil
+}
+
+// ChatMembers Contains a list of chat members
+type ChatMembers struct {
+	tdCommon
+	TotalCount int32        `json:"total_count"` // Approximate total count of chat members found
+	Members    []ChatMember `json:"members"`     // A list of chat members
+}
+
+// MessageType return the string telegram-type of ChatMembers
+func (chatMembers *ChatMembers) MessageType() string {
+	return "chatMembers"
+}
+
+// NewChatMembers creates a new ChatMembers
+//
+// @param totalCount Approximate total count of chat members found
+// @param members A list of chat members
+func NewChatMembers(totalCount int32, members []ChatMember) *ChatMembers {
+	chatMembersTemp := ChatMembers{
+		tdCommon:   tdCommon{Type: "chatMembers"},
+		TotalCount: totalCount,
+		Members:    members,
+	}
+
+	return &chatMembersTemp
+}
+
 // ChatMembersFilterContacts Returns contacts of the user
 type ChatMembersFilterContacts struct {
 	tdCommon
@@ -5629,6 +5735,62 @@ func (secretChat *SecretChat) UnmarshalJSON(b []byte) error {
 	secretChat.State = fieldState
 
 	return nil
+}
+
+// MessageSenderUser The message was sent by a known user
+type MessageSenderUser struct {
+	tdCommon
+	UserID int32 `json:"user_id"` // Identifier of the user that sent the message
+}
+
+// MessageType return the string telegram-type of MessageSenderUser
+func (messageSenderUser *MessageSenderUser) MessageType() string {
+	return "messageSenderUser"
+}
+
+// NewMessageSenderUser creates a new MessageSenderUser
+//
+// @param userID Identifier of the user that sent the message
+func NewMessageSenderUser(userID int32) *MessageSenderUser {
+	messageSenderUserTemp := MessageSenderUser{
+		tdCommon: tdCommon{Type: "messageSenderUser"},
+		UserID:   userID,
+	}
+
+	return &messageSenderUserTemp
+}
+
+// GetMessageSenderEnum return the enum type of this object
+func (messageSenderUser *MessageSenderUser) GetMessageSenderEnum() MessageSenderEnum {
+	return MessageSenderUserType
+}
+
+// MessageSenderChat The message was sent on behalf of a chat
+type MessageSenderChat struct {
+	tdCommon
+	ChatID int64 `json:"chat_id"` // Identifier of the chat that sent the message
+}
+
+// MessageType return the string telegram-type of MessageSenderChat
+func (messageSenderChat *MessageSenderChat) MessageType() string {
+	return "messageSenderChat"
+}
+
+// NewMessageSenderChat creates a new MessageSenderChat
+//
+// @param chatID Identifier of the chat that sent the message
+func NewMessageSenderChat(chatID int64) *MessageSenderChat {
+	messageSenderChatTemp := MessageSenderChat{
+		tdCommon: tdCommon{Type: "messageSenderChat"},
+		ChatID:   chatID,
+	}
+
+	return &messageSenderChatTemp
+}
+
+// GetMessageSenderEnum return the enum type of this object
+func (messageSenderChat *MessageSenderChat) GetMessageSenderEnum() MessageSenderEnum {
+	return MessageSenderChatType
 }
 
 // MessageSenders Represents a list of message senders
@@ -6498,7 +6660,7 @@ func (chatTypeBasicGroup *ChatTypeBasicGroup) GetChatTypeEnum() ChatTypeEnum {
 // ChatTypeSupergroup A supergroup (i.e. a chat with up to GetOption("supergroup_max_size") other users), or channel (with unlimited members)
 type ChatTypeSupergroup struct {
 	tdCommon
-	SupergroupID int64 `json:"supergroup_id"` // Supergroup or channel identifier
+	SupergroupID int32 `json:"supergroup_id"` // Supergroup or channel identifier
 	IsChannel    bool  `json:"is_channel"`    // True, if the supergroup is a channel
 }
 
@@ -6511,7 +6673,7 @@ func (chatTypeSupergroup *ChatTypeSupergroup) MessageType() string {
 //
 // @param supergroupID Supergroup or channel identifier
 // @param isChannel True, if the supergroup is a channel
-func NewChatTypeSupergroup(supergroupID int64, isChannel bool) *ChatTypeSupergroup {
+func NewChatTypeSupergroup(supergroupID int32, isChannel bool) *ChatTypeSupergroup {
 	chatTypeSupergroupTemp := ChatTypeSupergroup{
 		tdCommon:     tdCommon{Type: "chatTypeSupergroup"},
 		SupergroupID: supergroupID,
@@ -7191,7 +7353,7 @@ type ChatInviteLinkInfo struct {
 	Title         string         `json:"title"`           // Title of the chat
 	Photo         *ChatPhotoInfo `json:"photo"`           // Chat photo; may be null
 	MemberCount   int32          `json:"member_count"`    // Number of members in the chat
-	MemberUserIDs []int64        `json:"member_user_ids"` // User identifiers of some chat members that may be known to the current user
+	MemberUserIDs []int32        `json:"member_user_ids"` // User identifiers of some chat members that may be known to the current user
 	IsPublic      bool           `json:"is_public"`       // True, if the chat is a public supergroup or channel, i.e. it has a username or it is a location-based supergroup
 }
 
@@ -7210,7 +7372,7 @@ func (chatInviteLinkInfo *ChatInviteLinkInfo) MessageType() string {
 // @param memberCount Number of members in the chat
 // @param memberUserIDs User identifiers of some chat members that may be known to the current user
 // @param isPublic True, if the chat is a public supergroup or channel, i.e. it has a username or it is a location-based supergroup
-func NewChatInviteLinkInfo(chatID int64, accessibleFor int32, typeParam ChatType, title string, photo *ChatPhotoInfo, memberCount int32, memberUserIDs []int64, isPublic bool) *ChatInviteLinkInfo {
+func NewChatInviteLinkInfo(chatID int64, accessibleFor int32, typeParam ChatType, title string, photo *ChatPhotoInfo, memberCount int32, memberUserIDs []int32, isPublic bool) *ChatInviteLinkInfo {
 	chatInviteLinkInfoTemp := ChatInviteLinkInfo{
 		tdCommon:      tdCommon{Type: "chatInviteLinkInfo"},
 		ChatID:        chatID,
@@ -7240,7 +7402,7 @@ func (chatInviteLinkInfo *ChatInviteLinkInfo) UnmarshalJSON(b []byte) error {
 		Title         string         `json:"title"`           // Title of the chat
 		Photo         *ChatPhotoInfo `json:"photo"`           // Chat photo; may be null
 		MemberCount   int32          `json:"member_count"`    // Number of members in the chat
-		MemberUserIDs []int64        `json:"member_user_ids"` // User identifiers of some chat members that may be known to the current user
+		MemberUserIDs []int32        `json:"member_user_ids"` // User identifiers of some chat members that may be known to the current user
 		IsPublic      bool           `json:"is_public"`       // True, if the chat is a public supergroup or channel, i.e. it has a username or it is a location-based supergroup
 	}{}
 	err = json.Unmarshal(b, &tempObj)
@@ -31825,6 +31987,33 @@ func unmarshalSecretChatState(rawMsg *json.RawMessage) (SecretChatState, error) 
 		var secretChatStateClosed SecretChatStateClosed
 		err := json.Unmarshal(*rawMsg, &secretChatStateClosed)
 		return &secretChatStateClosed, err
+
+	default:
+		return nil, fmt.Errorf("Error unmarshaling, unknown type:" + objMap["@type"].(string))
+	}
+}
+
+func unmarshalMessageSender(rawMsg *json.RawMessage) (MessageSender, error) {
+
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var objMap map[string]interface{}
+	err := json.Unmarshal(*rawMsg, &objMap)
+	if err != nil {
+		return nil, err
+	}
+
+	switch MessageSenderEnum(objMap["@type"].(string)) {
+	case MessageSenderUserType:
+		var messageSenderUser MessageSenderUser
+		err := json.Unmarshal(*rawMsg, &messageSenderUser)
+		return &messageSenderUser, err
+
+	case MessageSenderChatType:
+		var messageSenderChat MessageSenderChat
+		err := json.Unmarshal(*rawMsg, &messageSenderChat)
+		return &messageSenderChat, err
 
 	default:
 		return nil, fmt.Errorf("Error unmarshaling, unknown type:" + objMap["@type"].(string))

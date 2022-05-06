@@ -178,22 +178,20 @@ func (client *Client) Stop() {
 	}
 
 	//TEST!!!!
-
-	for client.WaitersLen() != 0 {
-		fmt.Println("Waiters count : ", client.WaitersLen())
-		time.Sleep(time.Second * 1)
-	}
-
+	/*
+		for client.WaitersLen() != 0 {
+			fmt.Println("Waiters count : ", client.WaitersLen())
+			time.Sleep(time.Second * 1)
+		}
+	*/
 	client.StopWork <- true
 	for !client.IsStopped {
 		time.Sleep(1 * time.Second)
 	}
-	//
+	//time.Sleep(1 * time.Second)
 
 	//client.Close()
-	//time.Sleep(5 * time.Second)
 	client.DestroyInstance()
-
 	//fmt.Println("Client stoped")
 	/*
 		for {
@@ -258,8 +256,6 @@ func (client *Client) PublishEvent(eventType string, update interface{}) error {
 
 	client.receiverLock.Lock()
 	defer client.receiverLock.Unlock()
-
-	fmt.Printf("[%s] type : %s | extra : %s\n", eventType, update.(UpdateData)["@type"], update.(UpdateData)["@extra"])
 	// Отправляем событие подписавшимся обработчикам
 	for _, u := range client.eventHandlers {
 		err := u(eventType, update)
@@ -406,8 +402,8 @@ func (client *Client) SendAndCatch(jsonQuery interface{}) (UpdateMsg, error) {
 	}
 
 	//Публикуем запрос
-	//raw, _ := json.Marshal(jsonQuery)
-	err := client.PublishEvent(EventTypeRequest, update)
+	raw, _ := json.Marshal(jsonQuery)
+	err := client.PublishEvent(EventTypeRequest, UpdateMsg{Data: update, Raw: raw})
 	if err != nil {
 		return UpdateMsg{}, err
 	}
@@ -465,22 +461,15 @@ func (client *Client) SendAndCatch(jsonQuery interface{}) (UpdateMsg, error) {
 			fmt.Printf("RESPONSE : %#v\n", response.Data)
 			fmt.Println("====================================")
 		*/
-
 		//публикуем результат выполнения запроса
-		/* Структура результата:
-		*	Name
-		*	Data
-		*	DataType
-		 */
-
 		//update["@extra"] = response.Data["@type"]
 		response.Data["@extra"] = update["@type"]
-		err := client.PublishEvent(EventTypeResponse, response.Data)
+		err := client.PublishEvent(EventTypeResponse, UpdateMsg{Data: response.Data, Raw: raw})
 		//fmt.Printf("RESP %s\n\n", err)
 		return response, err
 
 		// or timeout
-	case <-time.After(15 * time.Second):
+	case <-time.After(10 * time.Second):
 		/*
 			if IsStopped {
 				return UpdateMsg{}, fmt.Errorf("Request not execute, client stopped\n")

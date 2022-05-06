@@ -195,7 +195,7 @@ func (client *Client) CheckAuthenticationCode(code string) (*Ok, error) {
 
 // RequestQrCodeAuthentication Requests QR code authentication by scanning a QR code on another logged in device. Works only when the current authorization state is authorizationStateWaitPhoneNumber,
 // @param otherUserIDs List of user identifiers of other users currently using the application
-func (client *Client) RequestQrCodeAuthentication(otherUserIDs []int64) (*Ok, error) {
+func (client *Client) RequestQrCodeAuthentication(otherUserIDs []int32) (*Ok, error) {
 	result, err := client.SendAndCatch(UpdateData{
 		"@type":          "requestQrCodeAuthentication",
 		"other_user_ids": otherUserIDs,
@@ -717,7 +717,7 @@ func (client *Client) GetUser(userID int64) (*User, error) {
 
 // GetUserFullInfo Returns full information about a user by their identifier
 // @param userID User identifier
-func (client *Client) GetUserFullInfo(userID int64) (*UserFullInfo, error) {
+func (client *Client) GetUserFullInfo(userID int32) (*UserFullInfo, error) {
 	result, err := client.SendAndCatch(UpdateData{
 		"@type":   "getUserFullInfo",
 		"user_id": userID,
@@ -739,7 +739,7 @@ func (client *Client) GetUserFullInfo(userID int64) (*UserFullInfo, error) {
 
 // GetBasicGroup Returns information about a basic group by its identifier. This is an offline request if the current user is not a bot
 // @param basicGroupID Basic group identifier
-func (client *Client) GetBasicGroup(basicGroupID int64) (*BasicGroup, error) {
+func (client *Client) GetBasicGroup(basicGroupID int32) (*BasicGroup, error) {
 	result, err := client.SendAndCatch(UpdateData{
 		"@type":          "getBasicGroup",
 		"basic_group_id": basicGroupID,
@@ -783,7 +783,7 @@ func (client *Client) GetBasicGroupFullInfo(basicGroupID int32) (*BasicGroupFull
 
 // GetSupergroup Returns information about a supergroup or a channel by its identifier. This is an offline request if the current user is not a bot
 // @param supergroupID Supergroup or channel identifier
-func (client *Client) GetSupergroup(supergroupID int64) (*Supergroup, error) {
+func (client *Client) GetSupergroup(supergroupID int32) (*Supergroup, error) {
 	result, err := client.SendAndCatch(UpdateData{
 		"@type":         "getSupergroup",
 		"supergroup_id": supergroupID,
@@ -1476,7 +1476,7 @@ func (client *Client) GetInactiveSupergroupChats() (*Chats, error) {
 // @param userID User identifier
 // @param offsetChatID Chat identifier starting from which to return chats; use 0 for the first request
 // @param limit The maximum number of chats to be returned; up to 100
-func (client *Client) GetGroupsInCommon(userID int64, offsetChatID int64, limit int32) (*Chats, error) {
+func (client *Client) GetGroupsInCommon(userID int32, offsetChatID int64, limit int32) (*Chats, error) {
 	result, err := client.SendAndCatch(UpdateData{
 		"@type":          "getGroupsInCommon",
 		"user_id":        userID,
@@ -2048,7 +2048,7 @@ func (client *Client) SendMessageAlbum(chatID int64, messageThreadID int64, repl
 // @param botUserID Identifier of the bot
 // @param chatID Identifier of the target chat
 // @param parameter A hidden parameter sent to the bot for deep linking purposes (https://core.telegram.org/bots#deep-linking)
-func (client *Client) SendBotStartMessage(botUserID int64, chatID int64, parameter string) (*Message, error) {
+func (client *Client) SendBotStartMessage(botUserID int32, chatID int64, parameter string) (*Message, error) {
 	result, err := client.SendAndCatch(UpdateData{
 		"@type":       "sendBotStartMessage",
 		"bot_user_id": botUserID,
@@ -2265,7 +2265,7 @@ func (client *Client) DeleteMessages(chatID int64, messageIDs []int64, revoke bo
 // DeleteChatMessagesFromUser Deletes all messages sent by the specified user to a chat. Supported only for supergroups; requires can_delete_messages administrator privileges
 // @param chatID Chat identifier
 // @param userID User identifier
-func (client *Client) DeleteChatMessagesFromUser(chatID int64, userID int64) (*Ok, error) {
+func (client *Client) DeleteChatMessagesFromUser(chatID int64, userID int32) (*Ok, error) {
 	result, err := client.SendAndCatch(UpdateData{
 		"@type":   "deleteChatMessagesFromUser",
 		"chat_id": chatID,
@@ -4942,8 +4942,6 @@ func (client *Client) CheckChatInviteLink(inviteLink string) (*ChatInviteLinkInf
 		return nil, err
 	}
 
-	//fmt.Printf("RESULT %#v\n", result.Data)
-
 	if result.Data["@type"].(string) == "error" {
 		return nil, fmt.Errorf("%s", result.Raw)
 	}
@@ -6843,7 +6841,7 @@ func (client *Client) ReportSupergroupSpam(supergroupID int32, userID int32, mes
 // @param filter The type of users to return. By default, supergroupMembersFilterRecent
 // @param offset Number of users to skip
 // @param limit The maximum number of users be returned; up to 200
-func (client *Client) GetSupergroupMembers(supergroupID int64, filter SupergroupMembersFilter, offset int32, limit int32) (*ChatMembers, error) {
+func (client *Client) GetSupergroupMembers(supergroupID int32, filter SupergroupMembersFilter, offset int32, limit int32) (*ChatMembers, error) {
 	result, err := client.SendAndCatch(UpdateData{
 		"@type":         "getSupergroupMembers",
 		"supergroup_id": supergroupID,
