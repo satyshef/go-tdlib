@@ -5,12 +5,29 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type tdCommon struct {
 	Type  string `json:"@type"`
 	Extra string `json:"@extra"`
 }
+
+type SystemEvent struct {
+	Type EventType   `json:"type"`
+	Name string      `json:"name"`
+	Time int64       `json:"time"`
+	Data interface{} `json:"data"`
+}
+
+type EventType string
+
+const (
+	EventTypeRequest  EventType = "request"
+	EventTypeResponse EventType = "response"
+	EventTypeUpdate   EventType = "update"
+	EventTypeError    EventType = "error"
+)
 
 // JSONInt64 alias for int64, in order to deal with json big number problem
 type JSONInt64 int64
@@ -1651,6 +1668,30 @@ type Error struct {
 	tdCommon
 	Code    int    `json:"code"`    // Error code; subject to future changes. If the error code is 406, the error message must not be processed in any way and must not be displayed to the user
 	Message string `json:"message"` // Error message; subject to future changes
+}
+
+// New SystemEvent
+func NewEvent(eventType EventType, eventName string, eventTime int64, eventData string) *SystemEvent {
+	if eventTime == 0 {
+		eventTime = time.Now().UnixNano()
+	}
+	return &SystemEvent{
+		Type: eventType,
+		Name: eventName,
+		Data: eventData,
+		Time: eventTime,
+	}
+}
+
+func (ev *SystemEvent) DataType() string {
+	t := fmt.Sprintf("%T", ev.Data)
+	t = strings.Trim(t, " {}")
+	return t
+}
+
+func (ev *SystemEvent) DataJSON() string {
+	result, _ := json.Marshal(ev.Data)
+	return string(result)
 }
 
 // MessageType return the string telegram-type of Error

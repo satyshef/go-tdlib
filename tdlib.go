@@ -32,15 +32,7 @@ type UpdateMsg struct {
 }
 
 // EventHandler ....
-//type EventHandler func(eventType string, update *UpdateMsg) *Error
-type EventHandler func(eventType string, update interface{}) *Error
-
-const (
-	EventTypeRequest  = "request"
-	EventTypeResponse = "response"
-	EventTypeUpdate   = "update"
-	EventTypeError    = "error"
-)
+type EventHandler func(event *SystemEvent) *Error
 
 const (
 	//Error codes
@@ -232,37 +224,32 @@ func (client *Client) WaitersLen() int {
 //--------------------------------------------------------------------
 func (client *Client) AddEventHandler(event EventHandler) {
 	//блокируется при рестарте
-	//client.receiverLock.Lock()
-	//defer client.receiverLock.Unlock()
 	client.eventHandlers = append(client.eventHandlers, event)
-
 }
 
 func (client *Client) ResetEventHandlers() {
 	client.eventHandlers = nil
 }
 
-func (client *Client) PublishEvent(eventType string, update interface{}) error {
+func (client *Client) PublishEvent(event *SystemEvent) error {
+	/*
+		if client == nil {
+			return NewError(ErrorCodeSystem, "CLIENT_DESTROED", "Client is destroed")
+		}
 
-	if client == nil {
-		return NewError(ErrorCodeSystem, "CLIENT_DESTROED", "Client is destroed")
-	}
-
-	if update == nil {
-		return NewError(ErrorCodeSystem, "CLIENT_WRONG_DATA", "No required parameters. Event is empty")
-	}
+		if event == (SystemEvent{}) {
+			return NewError(ErrorCodeSystem, "CLIENT_WRONG_DATA", "No required parameters. Event is empty")
+		}
+	*/
 
 	if client.IsStopped {
 		return NewError(ErrorCodeStopped, "CLIENT_STOPPED", "Publish Event Error : Client stopped")
 	}
-
 	client.receiverLock.Lock()
 	defer client.receiverLock.Unlock()
-
-	fmt.Printf("[%s] type : %s | extra : %s\n", eventType, update.(UpdateData)["@type"], update.(UpdateData)["@extra"])
 	// Отправляем событие подписавшимся обработчикам
-	for _, u := range client.eventHandlers {
-		err := u(eventType, update)
+	for _, h := range client.eventHandlers {
+		err := h(event)
 		if err != nil {
 			return err
 		}
@@ -406,8 +393,10 @@ func (client *Client) SendAndCatch(jsonQuery interface{}) (UpdateMsg, error) {
 	}
 
 	//Публикуем запрос
-	//raw, _ := json.Marshal(jsonQuery)
-	err := client.PublishEvent(EventTypeRequest, update)
+	ev := updateToEvent(update)
+	//fmt.Printf("UP %#v\n\n", ev)
+	//var err error
+	err := client.PublishEvent(ev)
 	if err != nil {
 		return UpdateMsg{}, err
 	}
@@ -438,67 +427,40 @@ func (client *Client) SendAndCatch(jsonQuery interface{}) (UpdateMsg, error) {
 	select {
 	// wait response from main loop in NewClient()
 	case response := <-waiter:
-		/*
-			if IsStopped {
-				return UpdateMsg{}, fmt.Errorf("Request not execute, client stopped\n")
-			}
-		*/
-
 		client.waitersLock.Lock()
 		delete(client.waiters, randomString)
 		client.waitersLock.Unlock()
 
-		if e := ResponceToError(response); e != nil {
-			//В качестве типа ошибки устанавливаем название запроса
-			e.Type = update["@type"].(string)
-
-			//client.publishError(e)
-			if err := client.PublishEvent(EventTypeError, *e); err != nil {
+		// if response is error
+		if response.Data["@type"].(string) == "error" {
+			respErr := responseToError(response, update)
+			ev := errorToEvent(respErr)
+			if err := client.PublishEvent(ev); err != nil {
 				return UpdateMsg{}, err
 			}
-			return UpdateMsg{}, e
+			return UpdateMsg{}, respErr
 		}
-		/*
-			fmt.Println("====================================")
-			fmt.Printf("UPDATE : %#v\n", update)
-			fmt.Println("------------------------------------")
-			fmt.Printf("RESPONSE : %#v\n", response.Data)
-			fmt.Println("====================================")
-		*/
 
-		//публикуем результат выполнения запроса
-		/* Структура результата:
-		*	Name
-		*	Data
-		*	DataType
-		 */
+		ev := responseToEvent(response, update)
+		//ev := responseToEvent(response, update)
+		//fmt.Printf("Response Type %s\n\n", ev2.DataType())
 
-		//update["@extra"] = response.Data["@type"]
-		response.Data["@extra"] = update["@type"]
-		err := client.PublishEvent(EventTypeResponse, response.Data)
-		//fmt.Printf("RESP %s\n\n", err)
+		err := client.PublishEvent(ev)
 		return response, err
 
 		// or timeout
 	case <-time.After(15 * time.Second):
-		/*
-			if IsStopped {
-				return UpdateMsg{}, fmt.Errorf("Request not execute, client stopped\n")
-			}
-		*/
 		client.waitersLock.Lock()
 		delete(client.waiters, randomString)
 		client.waitersLock.Unlock()
-
 		if update["@type"].(string) == "close" {
 			err := NewError(ErrorCodeClose, "CLIENT_CLOSE", "Client closed")
 			return UpdateMsg{}, err
 		}
-		// 501 - таймаут
 		e := NewError(ErrorCodeTimeout, "CLIENT_TIMEOUT", "Receive answer timeout")
-		e.Extra = randomString
-		client.PublishEvent(EventTypeError, *e)
-		//fmt.Printf("EEEE %#v\n", e)
+		ev := errorToEvent(e)
+		//e.Extra = randomString
+		client.PublishEvent(ev)
 		return UpdateMsg{}, e
 	}
 }
@@ -587,14 +549,14 @@ func (client *Client) SendAuthPassword(password string) (AuthorizationState, err
 }
 
 //Конвертируем ответ в ошибку
-func ResponceToError(response UpdateMsg) *Error {
-
-	if response.Data["@type"].(string) != "error" {
-		return nil
-	}
+func responseToError(response UpdateMsg, update UpdateData) *Error {
 
 	var e *Error
-	json.Unmarshal(response.Raw, &e)
+	if err := json.Unmarshal(response.Raw, &e); err != nil {
+		return NewError(ErrorCodeSystem, "SYSTEM_JSON", err.Error())
+	}
+	//В качестве типа ошибки устанавливаем название запроса
+	e.Type = update["@type"].(string)
 
 	if strings.Contains(e.Message, "Too Many Requests") {
 		e.Code = ErrorCodeManyRequests
@@ -620,4 +582,62 @@ func ResponceToError(response UpdateMsg) *Error {
 	}
 
 	return e
+}
+
+func updateToEvent(update UpdateData) *SystemEvent {
+	name := update["@type"].(string)
+	data := make(map[string]interface{})
+	for key, val := range update {
+		if key == "@extra" || key == "@type" {
+			continue
+		}
+		data[key] = val
+	}
+	return &SystemEvent{
+		Type: EventTypeRequest,
+		Name: name,
+		Data: data,
+	}
+}
+
+func responseToEvent(response UpdateMsg, update UpdateData) *SystemEvent {
+	/*
+		response.Data["@extra"] = update["@type"]
+		return response.Data
+	*/
+	data := make(map[string]interface{})
+	for key, val := range response.Data {
+		if key == "@extra" {
+			continue
+		}
+		data[key] = val
+	}
+	//result
+	r := &SystemEvent{
+		Type: EventTypeResponse,
+		Name: update["@type"].(string),
+		Data: data,
+	}
+	/*
+		switch data["@type"] {
+		case "ok":
+			r.Data = "OK"
+		case "text":
+			r.Data = data["text"]
+		default:
+			r.Data = data
+		}
+	*/
+	return r
+}
+
+func errorToEvent(err *Error) *SystemEvent {
+	err.Extra = ""
+	return &SystemEvent{
+		Type: EventTypeError,
+		Name: err.Type,
+		//DataType: "tdlib_err",
+		Data: *err,
+	}
+
 }
