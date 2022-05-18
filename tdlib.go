@@ -109,6 +109,7 @@ func NewClient(config Config) *Client {
 // Start
 func (client *Client) Start() error {
 	//client.Destroy()
+	fmt.Println("Hello from deploy!!!!")
 	client.IsStopped = false
 	client.Client = C.td_json_client_create()
 	go func() {
