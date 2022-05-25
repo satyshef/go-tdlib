@@ -1,3 +1,3 @@
-module github.com/polihoster/tdlib
+module github.com/satyshef/tdlib
 
 go 1.15

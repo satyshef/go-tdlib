@@ -47,10 +47,13 @@ const (
 	ErrorCodePhoneBanned     = 109
 	ErrorCodePhoneInvalid    = 110
 	ErrorCodePassInvalid     = 111
-	ErrorCodeManyRequests    = 112
 	ErrorCodeUsernameInvalid = 113
 	ErrorCodeFloodLock       = 114
-	ErrorCodeNoAccess        = 115
+	// clients errors
+	ErrorCodeNoAccess            = 403
+	ErrorCodeUsernameNotOccupied = 405
+	// server errors
+	ErrorCodeManyRequests = 501
 )
 
 // Client is the Telegram TdLib client
@@ -107,122 +110,76 @@ func NewClient(config Config) *Client {
 }
 
 // Start
-func (client *Client) Start() error {
+func (client *Client) Run() error {
 	//client.Destroy()
-	fmt.Println("Hello from deploy!!!!")
 	client.IsStopped = false
 	client.Client = C.td_json_client_create()
 	go func() {
-		for {
-
-			select {
-			case <-client.StopWork:
-				goto Stop
-
-			default:
-				// get update
-				updateBytes := client.Receive(1)
-				if len(updateBytes) == 0 {
-					break
-				}
-
-				//fmt.Printf("UP %#v\n", updateBytes)
-				var updateData UpdateData
-				json.Unmarshal(updateBytes, &updateData)
-
-				// does new update has @extra field?
-				if extra, hasExtra := updateData["@extra"].(string); hasExtra {
-					client.waitersLock.RLock()
-					waiter, found := client.waiters[extra]
-					client.waitersLock.RUnlock()
-
-					// trying to load update with this salt
-					if found {
-						// found? send it to waiter channel
-						waiter <- UpdateMsg{Data: updateData, Raw: updateBytes}
-
-						// trying to prevent memory leak
-						close(waiter)
-					}
-				} else {
-					//fmt.Printf("Publish Update : %#v\n", updateData)
-					client.publishUpdate(&UpdateMsg{Data: updateData, Raw: updateBytes})
-				}
-
-				//fmt.Printf("UP %#v\n", updateData)
-			}
-		}
-
-	Stop:
+		//Stop client
+		<-client.StopWork
 		client.IsStopped = true
-		//fmt.Println("Client stoped")
+		for client.WaitersLen() != 0 {
+			fmt.Println("Waiters count : ", client.WaitersLen())
+			time.Sleep(time.Second * 1)
+		}
+		time.Sleep(time.Second * 3)
+		client.DestroyInstance()
+
 	}()
-
+	runGetUpdates(client)
 	client.sendTdLibParams()
-	_, err := client.Authorize()
-	return err
 
-}
-
-func (client *Client) Stop() {
-
-	if client.IsStopped || client.StopWork == nil {
-		return
-	}
-
-	//TEST!!!!
-
-	for client.WaitersLen() != 0 {
-		fmt.Println("Waiters count : ", client.WaitersLen())
+	for state, err := client.Authorize(); state == nil; {
+		if err != nil {
+			client.IsStopped = true
+			return err
+		}
 		time.Sleep(time.Second * 1)
 	}
 
-	client.StopWork <- true
-	for !client.IsStopped {
-		time.Sleep(1 * time.Second)
+	return nil
+}
+
+func (client *Client) Stop() {
+	if client.IsStopped || client.StopWork == nil {
+		return
 	}
-	//
-
-	//client.Close()
-	//time.Sleep(5 * time.Second)
-	client.DestroyInstance()
-
-	//fmt.Println("Client stoped")
-	/*
-		for {
-			l := client.WaitersLen()
-			fmt.Println("Waiters", l)
-			if l != 0 {
-				time.Sleep(time.Second * 1)
-			} else {
-				break
-			}
-		}
-	*/
-	//client.ResetEventHandlers()
-	//time.Sleep(1 * time.Second)
-
-	//client.DestroyInstance()
+	client.StopWork <- true
 }
 
 func (client *Client) WaitersLen() int {
-
 	return len(client.waiters)
+}
 
-	/*
-		length := 0
-		client.waiters.Range(func(_, _ interface{}) bool {
-			length++
-
-			return true
-		})
-
-		return length
-	*/
+func runGetUpdates(client *Client) {
+	go func() {
+		for !client.IsStopped {
+			updateBytes := client.Receive(1)
+			if len(updateBytes) == 0 {
+				continue
+			}
+			var updateData UpdateData
+			json.Unmarshal(updateBytes, &updateData)
+			// does new update has @extra field?
+			if extra, hasExtra := updateData["@extra"].(string); hasExtra {
+				client.waitersLock.RLock()
+				waiter, found := client.waiters[extra]
+				client.waitersLock.RUnlock()
+				// trying to load update with this salt
+				if found {
+					// found? send it to waiter channel
+					waiter <- UpdateMsg{Data: updateData, Raw: updateBytes}
+					// trying to prevent memory leak
+					close(waiter)
+				}
+			} else {
+				client.publishUpdate(&UpdateMsg{Data: updateData, Raw: updateBytes})
+			}
+		}
+	}()
 }
 
 // AddEventHandler ....
-//--------------------------------------------------------------------
 func (client *Client) AddEventHandler(event EventHandler) {
 	//блокируется при рестарте
 	client.eventHandlers = append(client.eventHandlers, event)
@@ -280,7 +237,9 @@ func (client *Client) publishUpdate(update *UpdateMsg) {
 // DestroyInstance Destroys the TDLib client instance.
 // After this is called the client instance shouldn't be used anymore.
 func (client *Client) DestroyInstance() {
-	C.td_json_client_destroy(client.Client)
+	if client.Client != nil {
+		C.td_json_client_destroy(client.Client)
+	}
 }
 
 // Send Sends request to the TDLib client.
@@ -566,6 +525,8 @@ func responseToError(response UpdateMsg, update UpdateData) *Error {
 
 	//Переназначаем коды ошибок телеграм на свои
 	switch e.Message {
+	case "USERNAME_NOT_OCCUPIED":
+		e.Code = ErrorCodeUsernameNotOccupied
 	case "PHONE_NUMBER_BANNED":
 		e.Code = ErrorCodePhoneBanned
 	case "PASSWORD_HASH_INVALID":
@@ -579,6 +540,8 @@ func responseToError(response UpdateMsg, update UpdateData) *Error {
 	case "PEER_FLOOD":
 		e.Code = ErrorCodeFloodLock
 	case "Have no write access to the chat":
+		e.Code = ErrorCodeNoAccess
+	case "Have no rights to send a message":
 		e.Code = ErrorCodeNoAccess
 	}
 
