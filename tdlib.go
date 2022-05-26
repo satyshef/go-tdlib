@@ -112,12 +112,9 @@ func NewClient(config Config) *Client {
 // Start
 func (client *Client) Run() error {
 	//client.Destroy()
-	fmt.Println("STEP 1")
 	client.IsStopped = false
 	client.Client = C.td_json_client_create()
-	fmt.Println("STEP 2")
 	go func() {
-		fmt.Println("STEP 7")
 		//Stop client
 		<-client.StopWork
 		client.IsStopped = true
@@ -130,9 +127,7 @@ func (client *Client) Run() error {
 
 	}()
 	runGetUpdates(client)
-	fmt.Println("STEP 3")
 	client.sendTdLibParams()
-	fmt.Println("STEP 4")
 	for state, err := client.Authorize(); state == nil; {
 		if err != nil {
 			client.IsStopped = true
@@ -140,7 +135,6 @@ func (client *Client) Run() error {
 		}
 		time.Sleep(time.Second * 1)
 	}
-	fmt.Println("STEP 5")
 	return nil
 }
 
