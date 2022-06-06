@@ -36,25 +36,38 @@ type EventHandler func(event *SystemEvent) *Error
 
 const (
 	//Error codes
-	ErrorCodeNotFound        = 101
-	ErrorCodeSystem          = 102
-	ErrorCodeTimeout         = 103
-	ErrorCodeClose           = 104
-	ErrorCodeStopped         = 105
-	ErrorCodeNotInit         = 106
-	ErrorCodeLogout          = 107
-	ErrorCodeAborted         = 108
-	ErrorCodePhoneBanned     = 109
-	ErrorCodePhoneInvalid    = 110
-	ErrorCodePassInvalid     = 111
-	ErrorCodeUsernameInvalid = 113
-	ErrorCodeFloodLock       = 114
 	// clients errors
+	ErrorCodeSystem              = 400
 	ErrorCodeNoAccess            = 403
+	ErrorCodeNotFound            = 404
 	ErrorCodeUsernameNotOccupied = 405
+	ErrorCodeUsernameInvalid     = 406
+
 	// server errors
-	ErrorCodeManyRequests = 501
+	ErrorCodeManyRequests        = 501
+	ErrorCodeUserBannedInChannel = 502
+	ErrorCodePhoneInvalid        = 503
+	ErrorCodePassInvalid         = 504
+	ErrorCodeStopped             = 505
+	ErrorCodeFloodLock           = 506
+	ErrorCodeTimeout             = 507
+	ErrorCodeClose               = 508
+	ErrorCodeNotInit             = 509
+	ErrorCodeLogout              = 510
+	ErrorCodeAborted             = 511
+	ErrorCodePhoneBanned         = 512
 )
+
+type ClientStatus string
+
+/*
+const (
+	StatusInit     ClientStatus = "init"
+	StatusRun      ClientStatus = "run"
+	StatusStopping ClientStatus = "stopping"
+	StatusStopped  ClientStatus = "stopped"
+)
+*/
 
 // Client is the Telegram TdLib client
 type Client struct {
@@ -65,8 +78,10 @@ type Client struct {
 	waiters         map[string]chan UpdateMsg
 	receiverLock    *sync.Mutex
 	waitersLock     *sync.RWMutex
-	IsStopped       bool
-	StopWork        chan bool
+	isRun           bool
+	//Status          ClientStatus
+	//IsStopped       bool
+	//StopWork        chan bool
 }
 
 // Config holds tdlibParameters
@@ -99,7 +114,8 @@ func NewClient(config Config) *Client {
 	client.receiverLock = &sync.Mutex{}
 	client.waitersLock = &sync.RWMutex{}
 	client.waiters = make(map[string]chan UpdateMsg)
-	client.StopWork = make(chan bool)
+	//client.Status = StatusInit
+	//client.StopWork = make(chan bool)
 
 	/*
 		if err := client.run(); err != nil {
@@ -112,47 +128,102 @@ func NewClient(config Config) *Client {
 // Start
 func (client *Client) Run() error {
 	//client.Destroy()
-	client.IsStopped = false
+	//client.Status = StatusInit
+	if client.IsRun() {
+		return fmt.Errorf("%s", "Client is running")
+	}
+	client.isRun = true
 	client.Client = C.td_json_client_create()
-	go func() {
-		//Stop client
-		<-client.StopWork
-		client.IsStopped = true
-		for client.WaitersLen() != 0 {
-			fmt.Println("Waiters count : ", client.WaitersLen())
-			time.Sleep(time.Second * 1)
-		}
-		time.Sleep(time.Second * 3)
-		client.DestroyInstance()
+	/*
+		go func() {
+			//Stop client
+			<-client.StopWork
+			client.IsStopped() = true
+			for client.WaitersLen() != 0 {
+				fmt.Println("Waiters count : ", client.WaitersLen())
+				time.Sleep(time.Second * 1)
+			}
+			time.Sleep(time.Second * 3)
+			client.DestroyInstance()
 
-	}()
+		}()
+	*/
 	runGetUpdates(client)
 	client.sendTdLibParams()
 	for state, err := client.Authorize(); state == nil; {
 		if err != nil {
-			client.IsStopped = true
+			client.Stop()
 			return err
 		}
-		time.Sleep(time.Second * 1)
+		//time.Sleep(time.Second * 1)
 	}
+	//client.Status = StatusRun
 	return nil
 }
 
 func (client *Client) Stop() {
-	if client.IsStopped || client.StopWork == nil {
+	defer func() { client = nil }()
+	if !client.IsRun() {
+		fmt.Println("DEBUG: Stop in Stop")
 		return
 	}
-	client.StopWork <- true
+	/*
+		fmt.Println("STEP 1")
+		client.Close()
+		fmt.Println("STEP 2")
+	*/
+	client.isRun = false
+	/*
+		if client.IsStopped() || client.StopWork == nil {
+			return
+		}
+		client.StopWork <- true
+	*/
+	/*
+		if client.Status == StatusStopping || client.Status == StatusStopped {
+			fmt.Println("DEBUG: Stop in Stop")
+			return
+		}
+		client.Status = StatusStopping
+
+		for client.WaitersLen() != 0 {
+			fmt.Println("Waiters count : ", client.WaitersLen())
+			time.Sleep(time.Second * 1)
+		}
+		fmt.Println("STAGE 1")
+		//client.Destroy()
+		fmt.Println("STAGE 2")
+		//time.Sleep(time.Second * 3)
+		client.destroyInstance()
+		fmt.Println("STAGE 3")
+		client.Status = StatusStopped
+	*/
+}
+
+func (client *Client) IsRun() bool {
+	if client.isRun {
+		return true
+	}
+	return false
 }
 
 func (client *Client) WaitersLen() int {
 	return len(client.waiters)
 }
 
+/*
+func (client *Client) IsStopped() bool {
+	if client.Status != StatusStopped {
+		return false
+	}
+	return true
+}
+*/
+
 func runGetUpdates(client *Client) {
 	go func() {
-		for !client.IsStopped {
-			updateBytes := client.Receive(1)
+		for client.IsRun() {
+			updateBytes := client.Receive(10)
 			if len(updateBytes) == 0 {
 				continue
 			}
@@ -198,7 +269,7 @@ func (client *Client) PublishEvent(event *SystemEvent) error {
 		}
 	*/
 
-	if client.IsStopped {
+	if !client.IsRun() {
 		return NewError(ErrorCodeStopped, "CLIENT_STOPPED", "Publish Event Error : Client stopped")
 	}
 	client.receiverLock.Lock()
@@ -234,9 +305,19 @@ func (client *Client) publishUpdate(update *UpdateMsg) {
 
 // DestroyInstance Destroys the TDLib client instance.
 // After this is called the client instance shouldn't be used anymore.
-func (client *Client) DestroyInstance() {
-	if client.Client != nil {
+func (client *Client) destroyInstance() {
+	if client.Client == nil {
+		return
+	}
+	state, err := client.Authorize()
+	if err != nil {
+		return
+	}
+	fmt.Printf("STATE #%v\n\n", state)
+	if state.GetAuthorizationStateEnum() != AuthorizationStateClosedType && state.GetAuthorizationStateEnum() != AuthorizationStateClosingType {
 		C.td_json_client_destroy(client.Client)
+		//time.Sleep(time.Second * 1)
+		//client.Client = nil
 	}
 }
 
@@ -244,7 +325,7 @@ func (client *Client) DestroyInstance() {
 // You can provide string or UpdateData.
 func (client *Client) Send(jsonQuery interface{}, force bool) {
 
-	if client.IsStopped && !force {
+	if !client.IsRun() && !force {
 		fmt.Printf("Query not send, client stopped : %s\n", jsonQuery)
 		return
 	}
@@ -267,12 +348,12 @@ func (client *Client) Send(jsonQuery interface{}, force bool) {
 // Receive Receives incoming updates and request responses from the TDLib client.
 // You can provide string or UpdateData.
 func (client *Client) Receive(timeout float64) []byte {
-	/*
-		if IsStopped {
-			fmt.Printf("Incoming updates not receives, client stopped\n")
-			return nil
-		}
-	*/
+
+	if !client.IsRun() {
+		fmt.Printf("Incoming updates not receives, client stopped\n")
+		return nil
+	}
+
 	result := C.td_json_client_receive(client.Client, C.double(timeout))
 
 	return []byte(C.GoString(result))
@@ -425,12 +506,10 @@ func (client *Client) SendAndCatch(jsonQuery interface{}) (UpdateMsg, error) {
 
 // Authorize is used to authorize the users
 func (client *Client) Authorize() (AuthorizationState, error) {
-
 	state, err := client.GetAuthorizationState()
 	if err != nil {
 		return nil, err
 	}
-
 	if state.GetAuthorizationStateEnum() == AuthorizationStateWaitEncryptionKeyType {
 		ok, err := client.CheckDatabaseEncryptionKey(nil)
 		if ok == nil || err != nil {
@@ -535,6 +614,8 @@ func responseToError(response UpdateMsg, update UpdateData) *Error {
 		e.Code = ErrorCodeLogout
 	case "USERNAME_INVALID":
 		e.Code = ErrorCodeUsernameInvalid
+	case "USER_BANNED_IN_CHANNEL":
+		e.Code = ErrorCodeUserBannedInChannel
 	case "PEER_FLOOD":
 		e.Code = ErrorCodeFloodLock
 	case "Have no write access to the chat":
@@ -546,6 +627,7 @@ func responseToError(response UpdateMsg, update UpdateData) *Error {
 	return e
 }
 
+//convert UpdateData to SystemEvent
 func updateToEvent(update UpdateData) *SystemEvent {
 	name := update["@type"].(string)
 	data := make(map[string]interface{})
