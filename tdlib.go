@@ -37,11 +37,12 @@ type EventHandler func(event *SystemEvent) *Error
 const (
 	//Error codes
 	// clients errors
-	ErrorCodeSystem              = 400
-	ErrorCodeNoAccess            = 403
-	ErrorCodeNotFound            = 404
-	ErrorCodeUsernameNotOccupied = 405
-	ErrorCodeUsernameInvalid     = 406
+	ErrorCodeSystem                = 400
+	ErrorCodeNoAccess              = 403
+	ErrorCodeNotFound              = 404
+	ErrorCodeUsernameNotOccupied   = 405
+	ErrorCodeUsernameInvalid       = 406
+	ErrorCodeUserPrivacyRestricted = 407
 
 	// server errors
 	ErrorCodeManyRequests        = 501
@@ -134,6 +135,7 @@ func (client *Client) Run() error {
 	}
 	client.isRun = true
 	client.Client = C.td_json_client_create()
+
 	/*
 		go func() {
 			//Stop client
@@ -151,6 +153,7 @@ func (client *Client) Run() error {
 	runGetUpdates(client)
 	client.sendTdLibParams()
 	for state, err := client.Authorize(); state == nil; {
+		fmt.Printf("ERROR %#v\n", err)
 		if err != nil {
 			client.Stop()
 			return err
@@ -173,6 +176,11 @@ func (client *Client) Stop() {
 		fmt.Println("STEP 2")
 	*/
 	client.isRun = false
+	for client.WaitersLen() != 0 {
+		fmt.Println("Waiters count : ", client.WaitersLen())
+		time.Sleep(time.Second * 1)
+	}
+	time.Sleep(time.Second * 1)
 	/*
 		if client.IsStopped() || client.StopWork == nil {
 			return
@@ -313,7 +321,7 @@ func (client *Client) destroyInstance() {
 	if err != nil {
 		return
 	}
-	fmt.Printf("STATE #%v\n\n", state)
+	//fmt.Printf("STATE #%v\n\n", state)
 	if state.GetAuthorizationStateEnum() != AuthorizationStateClosedType && state.GetAuthorizationStateEnum() != AuthorizationStateClosingType {
 		C.td_json_client_destroy(client.Client)
 		//time.Sleep(time.Second * 1)
@@ -506,6 +514,7 @@ func (client *Client) SendAndCatch(jsonQuery interface{}) (UpdateMsg, error) {
 
 // Authorize is used to authorize the users
 func (client *Client) Authorize() (AuthorizationState, error) {
+
 	state, err := client.GetAuthorizationState()
 	if err != nil {
 		return nil, err
@@ -604,6 +613,8 @@ func responseToError(response UpdateMsg, update UpdateData) *Error {
 	switch e.Message {
 	case "USERNAME_NOT_OCCUPIED":
 		e.Code = ErrorCodeUsernameNotOccupied
+	case "USER_PRIVACY_RESTRICTED":
+		e.Code = ErrorCodeUserPrivacyRestricted
 	case "PHONE_NUMBER_BANNED":
 		e.Code = ErrorCodePhoneBanned
 	case "PASSWORD_HASH_INVALID":
