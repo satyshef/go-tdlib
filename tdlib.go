@@ -15,7 +15,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/rand"
-	"strings"
 
 	"sync"
 	"time"
@@ -34,32 +33,7 @@ type UpdateMsg struct {
 // EventHandler ....
 type EventHandler func(event *SystemEvent) *Error
 
-const (
-	//Error codes
-	// clients errors
-	ErrorCodeSystem                = 400
-	ErrorCodeNoAccess              = 403
-	ErrorCodeNotFound              = 404
-	ErrorCodeUsernameNotOccupied   = 405
-	ErrorCodeUsernameInvalid       = 406
-	ErrorCodeUserPrivacyRestricted = 407
-
-	// server errors
-	ErrorCodeManyRequests        = 501
-	ErrorCodeUserBannedInChannel = 502
-	ErrorCodePhoneInvalid        = 503
-	ErrorCodePassInvalid         = 504
-	ErrorCodeStopped             = 505
-	ErrorCodeFloodLock           = 506
-	ErrorCodeTimeout             = 507
-	ErrorCodeClose               = 508
-	ErrorCodeNotInit             = 509
-	ErrorCodeLogout              = 510
-	ErrorCodeAborted             = 511
-	ErrorCodePhoneBanned         = 512
-)
-
-type ClientStatus string
+//type ClientStatus string
 
 /*
 const (
@@ -134,8 +108,6 @@ func (client *Client) Run() error {
 		return fmt.Errorf("%s", "Client is running")
 	}
 	client.isRun = true
-	client.Client = C.td_json_client_create()
-
 	/*
 		go func() {
 			//Stop client
@@ -151,6 +123,7 @@ func (client *Client) Run() error {
 		}()
 	*/
 	runGetUpdates(client)
+	time.Sleep(time.Second * 1)
 	client.sendTdLibParams()
 	for state, err := client.Authorize(); state == nil; {
 		fmt.Printf("ERROR %#v\n", err)
@@ -165,7 +138,7 @@ func (client *Client) Run() error {
 }
 
 func (client *Client) Stop() {
-	defer func() { client = nil }()
+	defer func() { client.Client = nil }()
 	if !client.IsRun() {
 		fmt.Println("DEBUG: Stop in Stop")
 		return
@@ -176,11 +149,12 @@ func (client *Client) Stop() {
 		fmt.Println("STEP 2")
 	*/
 	client.isRun = false
-	for client.WaitersLen() != 0 {
-		fmt.Println("Waiters count : ", client.WaitersLen())
+	for client.WaitersLen() != 0 || client.Client != nil {
+		//fmt.Println("Waiters count : ", client.WaitersLen())
 		time.Sleep(time.Second * 1)
 	}
-	time.Sleep(time.Second * 1)
+	//client.destroyInstance()
+	//time.Sleep(time.Second * 2)
 	/*
 		if client.IsStopped() || client.StopWork == nil {
 			return
@@ -230,6 +204,7 @@ func (client *Client) IsStopped() bool {
 
 func runGetUpdates(client *Client) {
 	go func() {
+		client.Client = C.td_json_client_create()
 		for client.IsRun() {
 			updateBytes := client.Receive(10)
 			if len(updateBytes) == 0 {
@@ -253,6 +228,8 @@ func runGetUpdates(client *Client) {
 				client.publishUpdate(&UpdateMsg{Data: updateData, Raw: updateBytes})
 			}
 		}
+		C.td_json_client_destroy(client.Client)
+		client.Client = nil
 	}()
 }
 
@@ -276,12 +253,14 @@ func (client *Client) PublishEvent(event *SystemEvent) error {
 			return NewError(ErrorCodeSystem, "CLIENT_WRONG_DATA", "No required parameters. Event is empty")
 		}
 	*/
-
 	if !client.IsRun() {
 		return NewError(ErrorCodeStopped, "CLIENT_STOPPED", "Publish Event Error : Client stopped")
 	}
-	client.receiverLock.Lock()
-	defer client.receiverLock.Unlock()
+	// TODO: test disable mutex
+	/*
+		client.receiverLock.Lock()
+		defer client.receiverLock.Unlock()
+	*/
 	// Отправляем событие подписавшимся обработчикам
 	for _, h := range client.eventHandlers {
 		err := h(event)
@@ -313,16 +292,24 @@ func (client *Client) publishUpdate(update *UpdateMsg) {
 
 // DestroyInstance Destroys the TDLib client instance.
 // After this is called the client instance shouldn't be used anymore.
-func (client *Client) destroyInstance() {
+func (client *Client) destroyInstance11() {
 	if client.Client == nil {
 		return
 	}
+
 	state, err := client.Authorize()
 	if err != nil {
-		return
+		e := err.(*Error)
+		if e.Code != ErrorCodeStopped {
+			fmt.Printf("Destroy client error %#v\n", err)
+			return
+		}
 	}
-	//fmt.Printf("STATE #%v\n\n", state)
-	if state.GetAuthorizationStateEnum() != AuthorizationStateClosedType && state.GetAuthorizationStateEnum() != AuthorizationStateClosingType {
+
+	fmt.Println("Destroy 3")
+	fmt.Printf("STATE #%v\n\n", state)
+	if state == nil || state.GetAuthorizationStateEnum() != AuthorizationStateClosedType && state.GetAuthorizationStateEnum() != AuthorizationStateClosingType {
+		fmt.Println("Destroy !!!")
 		C.td_json_client_destroy(client.Client)
 		//time.Sleep(time.Second * 1)
 		//client.Client = nil
@@ -438,9 +425,8 @@ func (client *Client) SendAndCatch(jsonQuery interface{}) (UpdateMsg, error) {
 	case UpdateData:
 		update = jsonQuery.(UpdateData)
 	}
-
 	//Публикуем запрос
-	ev := updateToEvent(update)
+	ev := UpdateToEvent(update)
 	//fmt.Printf("UP %#v\n\n", ev)
 	//var err error
 	err := client.PublishEvent(ev)
@@ -463,7 +449,6 @@ func (client *Client) SendAndCatch(jsonQuery interface{}) (UpdateMsg, error) {
 	client.waitersLock.Lock()
 	client.waiters[randomString] = waiter
 	client.waitersLock.Unlock()
-
 	// send it through already implemented method
 	if update["@type"] == "close" {
 		client.Send(update, true)
@@ -481,14 +466,14 @@ func (client *Client) SendAndCatch(jsonQuery interface{}) (UpdateMsg, error) {
 		// if response is error
 		if response.Data["@type"].(string) == "error" {
 			respErr := responseToError(response, update)
-			ev := errorToEvent(respErr)
+			ev := ErrorToEvent(respErr)
 			if err := client.PublishEvent(ev); err != nil {
 				return UpdateMsg{}, err
 			}
 			return UpdateMsg{}, respErr
 		}
 
-		ev := responseToEvent(response, update)
+		ev := ResponseToEvent(response, update)
 		//ev := responseToEvent(response, update)
 		//fmt.Printf("Response Type %s\n\n", ev2.DataType())
 
@@ -505,7 +490,7 @@ func (client *Client) SendAndCatch(jsonQuery interface{}) (UpdateMsg, error) {
 			return UpdateMsg{}, err
 		}
 		e := NewError(ErrorCodeTimeout, "CLIENT_TIMEOUT", "Receive answer timeout")
-		ev := errorToEvent(e)
+		ev := ErrorToEvent(e)
 		//e.Extra = randomString
 		client.PublishEvent(ev)
 		return UpdateMsg{}, e
@@ -594,52 +579,8 @@ func (client *Client) SendAuthPassword(password string) (AuthorizationState, err
 	return authState, err
 }
 
-//Конвертируем ответ в ошибку
-func responseToError(response UpdateMsg, update UpdateData) *Error {
-
-	var e *Error
-	if err := json.Unmarshal(response.Raw, &e); err != nil {
-		return NewError(ErrorCodeSystem, "SYSTEM_JSON", err.Error())
-	}
-	//В качестве типа ошибки устанавливаем название запроса
-	e.Type = update["@type"].(string)
-
-	if strings.Contains(e.Message, "Too Many Requests") {
-		e.Code = ErrorCodeManyRequests
-		return e
-	}
-
-	//Переназначаем коды ошибок телеграм на свои
-	switch e.Message {
-	case "USERNAME_NOT_OCCUPIED":
-		e.Code = ErrorCodeUsernameNotOccupied
-	case "USER_PRIVACY_RESTRICTED":
-		e.Code = ErrorCodeUserPrivacyRestricted
-	case "PHONE_NUMBER_BANNED":
-		e.Code = ErrorCodePhoneBanned
-	case "PASSWORD_HASH_INVALID":
-		e.Code = ErrorCodePassInvalid
-	case "PHONE_NUMBER_INVALID":
-		e.Code = ErrorCodePhoneInvalid
-	case "Unauthorized":
-		e.Code = ErrorCodeLogout
-	case "USERNAME_INVALID":
-		e.Code = ErrorCodeUsernameInvalid
-	case "USER_BANNED_IN_CHANNEL":
-		e.Code = ErrorCodeUserBannedInChannel
-	case "PEER_FLOOD":
-		e.Code = ErrorCodeFloodLock
-	case "Have no write access to the chat":
-		e.Code = ErrorCodeNoAccess
-	case "Have no rights to send a message":
-		e.Code = ErrorCodeNoAccess
-	}
-
-	return e
-}
-
 //convert UpdateData to SystemEvent
-func updateToEvent(update UpdateData) *SystemEvent {
+func UpdateToEvent(update UpdateData) *SystemEvent {
 	name := update["@type"].(string)
 	data := make(map[string]interface{})
 	for key, val := range update {
@@ -655,7 +596,7 @@ func updateToEvent(update UpdateData) *SystemEvent {
 	}
 }
 
-func responseToEvent(response UpdateMsg, update UpdateData) *SystemEvent {
+func ResponseToEvent(response UpdateMsg, update UpdateData) *SystemEvent {
 	/*
 		response.Data["@extra"] = update["@type"]
 		return response.Data
@@ -686,7 +627,7 @@ func responseToEvent(response UpdateMsg, update UpdateData) *SystemEvent {
 	return r
 }
 
-func errorToEvent(err *Error) *SystemEvent {
+func ErrorToEvent(err *Error) *SystemEvent {
 	err.Extra = ""
 	return &SystemEvent{
 		Type: EventTypeError,
