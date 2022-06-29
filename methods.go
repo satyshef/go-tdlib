@@ -4333,7 +4333,7 @@ func (client *Client) AddChatMembers(chatID int64, userIDs []int32) (*Ok, error)
 // @param chatID Chat identifier
 // @param userID User identifier
 // @param status The new status of the member in the chat
-func (client *Client) SetChatMemberStatus(chatID int64, userID int32, status ChatMemberStatus) (*Ok, error) {
+func (client *Client) SetChatMemberStatus(chatID int64, userID int64, status ChatMemberStatus) (*Ok, error) {
 	result, err := client.SendAndCatch(UpdateData{
 		"@type":   "setChatMemberStatus",
 		"chat_id": chatID,
@@ -4422,14 +4422,41 @@ func (client *Client) TransferChatOwnership(chatID int64, userID int32, password
 
 }
 
+/*
 // GetChatMember Returns information about a single member of a chat
 // @param chatID Chat identifier
 // @param userID User identifier
-func (client *Client) GetChatMember(chatID int64, userID int32) (*ChatMember, error) {
+func (client *Client) GetChatMember(chatID int64, memberID int64) (*ChatMember, error) {
 	result, err := client.SendAndCatch(UpdateData{
-		"@type":   "getChatMember",
-		"chat_id": chatID,
-		"user_id": userID,
+		"@type":     "getChatMember",
+		"chat_id":   chatID,
+		"member_id": memberID,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	if result.Data["@type"].(string) == "error" {
+		return nil, fmt.Errorf("%s", result.Raw)
+	}
+
+	var chatMember ChatMember
+	err = json.Unmarshal(result.Raw, &chatMember)
+	return &chatMember, err
+
+}
+
+*/
+
+// GetChatMember Returns information about a single member of a chat
+// @param chatID Chat identifier
+// @param memberID Member identifier
+func (client *Client) GetChatMember(chatID int64, memberID MessageSender) (*ChatMember, error) {
+	result, err := client.SendAndCatch(UpdateData{
+		"@type":     "getChatMember",
+		"chat_id":   chatID,
+		"member_id": memberID,
 	})
 
 	if err != nil {
@@ -6719,7 +6746,7 @@ func (client *Client) DisconnectAllWebsites() (*Ok, error) {
 // SetSupergroupUsername Changes the username of a supergroup or channel, requires owner privileges in the supergroup or channel
 // @param supergroupID Identifier of the supergroup or channel
 // @param username New value of the username. Use an empty string to remove the username
-func (client *Client) SetSupergroupUsername(supergroupID int32, username string) (*Ok, error) {
+func (client *Client) SetSupergroupUsername(supergroupID int64, username string) (*Ok, error) {
 	result, err := client.SendAndCatch(UpdateData{
 		"@type":         "setSupergroupUsername",
 		"supergroup_id": supergroupID,
@@ -6917,7 +6944,7 @@ func (client *Client) CloseSecretChat(secretChatID int32) (*Ok, error) {
 // @param limit The maximum number of events to return; up to 100
 // @param filters The types of events to return. By default, all types will be returned
 // @param userIDs User identifiers by which to filter events. By default, events relating to all users will be returned
-func (client *Client) GetChatEventLog(chatID int64, query string, fromEventID JSONInt64, limit int32, filters *ChatEventLogFilters, userIDs []int32) (*ChatEvents, error) {
+func (client *Client) GetChatEventLog(chatID int64, query string, fromEventID JSONInt64, limit int32, filters *ChatEventLogFilters, userIDs []int64) (*ChatEvents, error) {
 	result, err := client.SendAndCatch(UpdateData{
 		"@type":         "getChatEventLog",
 		"chat_id":       chatID,

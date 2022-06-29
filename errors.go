@@ -14,6 +14,11 @@ const (
 	ErrorCodeUsernameNotOccupied   = 405
 	ErrorCodeUsernameInvalid       = 406
 	ErrorCodeUserPrivacyRestricted = 407
+	ErrorCodeUserNotFound          = 408
+	ErrorCodeMemberNotFound        = 409
+	ErrorCodeUserNotMutual         = 410
+	ErrorCodeUserTooMuch           = 411
+	ErrorCodeChatNotFound          = 412
 
 	// server errors
 	ErrorCodeManyRequests        = 501
@@ -53,6 +58,10 @@ func responseToError(response UpdateMsg, update UpdateData) *Error {
 		e.Code = ErrorCodeUsernameNotOccupied
 	case "USER_PRIVACY_RESTRICTED":
 		e.Code = ErrorCodeUserPrivacyRestricted
+	case "USER_NOT_MUTUAL_CONTACT":
+		e.Code = ErrorCodeUserNotMutual
+	case "USER_CHANNELS_TOO_MUCH":
+		e.Code = ErrorCodeUserTooMuch
 	case "AUTH_KEY_DUPLICATED":
 		e.Code = ErrorCodeAuthKeyDublicated
 	case "PHONE_NUMBER_BANNED":
@@ -75,6 +84,12 @@ func responseToError(response UpdateMsg, update UpdateData) *Error {
 		e.Code = ErrorCodeNoAccess
 	case "Can't return to kicked from chat":
 		e.Code = ErrorCodeUserKickedFromChat
+	case "User not found":
+		e.Code = ErrorCodeUserNotFound
+	case "Member not found":
+		e.Code = ErrorCodeMemberNotFound
+	case "Chat not found":
+		e.Code = ErrorCodeChatNotFound
 	}
 
 	return e

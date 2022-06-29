@@ -69,6 +69,3 @@ func (chatMember *ChatMember) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-func (chatMember *ChatMember) UserID() int64{
-	return chatMember.MemberID.GetID()
-}
