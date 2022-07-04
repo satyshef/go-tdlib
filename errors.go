@@ -82,6 +82,8 @@ func responseToError(response UpdateMsg, update UpdateData) *Error {
 		e.Code = ErrorCodeNoAccess
 	case "Have no rights to send a message":
 		e.Code = ErrorCodeNoAccess
+	case "USER_KICKED":
+		e.Code = ErrorCodeUserKickedFromChat
 	case "Can't return to kicked from chat":
 		e.Code = ErrorCodeUserKickedFromChat
 	case "User not found":
@@ -90,6 +92,8 @@ func responseToError(response UpdateMsg, update UpdateData) *Error {
 		e.Code = ErrorCodeMemberNotFound
 	case "Chat not found":
 		e.Code = ErrorCodeChatNotFound
+	case "Request aborted":
+		e.Code = ErrorCodeAborted
 	}
 
 	return e
