@@ -21,15 +21,6 @@ import (
 	"unsafe"
 )
 
-// UpdateData alias for use in UpdateMsg
-type UpdateData map[string]interface{}
-
-// UpdateMsg is used to unmarshal recieved json strings into
-type UpdateMsg struct {
-	Data UpdateData
-	Raw  []byte
-}
-
 // EventHandler ....
 type EventHandler func(event *SystemEvent) *Error
 

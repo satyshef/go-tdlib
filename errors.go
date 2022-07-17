@@ -37,6 +37,36 @@ const (
 	ErrorCodeAuthKeyDublicated   = 514
 )
 
+// Error An object of this type can be returned on every function call, in case of an error
+type Error struct {
+	tdCommon
+	Code    int    `json:"code"`    // Error code; subject to future changes. If the error code is 406, the error message must not be processed in any way and must not be displayed to the user
+	Message string `json:"message"` // Error message; subject to future changes
+}
+
+// MessageType return the string telegram-type of Error
+func (error *Error) MessageType() string {
+	return "error"
+}
+
+func (error *Error) Error() string {
+	result, _ := json.Marshal(error)
+	return string(result)
+}
+
+// NewError creates a new Error
+// @param code Error code; subject to future changes. If the error code is 406, the error message must not be processed in any way and must not be displayed to the user
+// @param message Error message; subject to future changes
+func NewError(code int, message, extra string) *Error {
+	errorTemp := Error{
+		tdCommon: tdCommon{Type: "error", Extra: extra},
+		Code:     code,
+		Message:  message,
+	}
+
+	return &errorTemp
+}
+
 //Конвертируем ответ в ошибку
 func responseToError(response UpdateMsg, update UpdateData) *Error {
 
@@ -70,7 +100,8 @@ func responseToError(response UpdateMsg, update UpdateData) *Error {
 		e.Code = ErrorCodePassInvalid
 	case "PHONE_NUMBER_INVALID":
 		e.Code = ErrorCodePhoneInvalid
-	case "Unauthorized":
+	case "USER_DEACTIVATED_BAN",
+		"Unauthorized":
 		e.Code = ErrorCodeLogout
 	case "USERNAME_INVALID":
 		e.Code = ErrorCodeUsernameInvalid

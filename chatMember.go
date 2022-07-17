@@ -68,4 +68,3 @@ func (chatMember *ChatMember) UnmarshalJSON(b []byte) error {
 
 	return nil
 }
-

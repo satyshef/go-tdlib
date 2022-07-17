@@ -10,7 +10,6 @@ import (
 // MessageSender Contains information about the sender of a message
 type MessageSender interface {
 	GetMessageSenderEnum() MessageSenderEnum
-	GetID() int64
 }
 
 // MessageSenderEnum Alias for abstract MessageSender 'Sub-Classes', used as constant-enum here
@@ -77,10 +76,6 @@ func (messageSenderUser *MessageSenderUser) GetMessageSenderEnum() MessageSender
 	return MessageSenderUserType
 }
 
-func (messageSenderUser *MessageSenderUser) GetID() int64{
-	return messageSenderUser.UserID
-}
-
 // MessageSenderChat The message was sent on behalf of a chat
 type MessageSenderChat struct {
 	tdCommon
@@ -107,8 +102,4 @@ func NewMessageSenderChat(chatID int64) *MessageSenderChat {
 // GetMessageSenderEnum return the enum type of this object
 func (messageSenderChat *MessageSenderChat) GetMessageSenderEnum() MessageSenderEnum {
 	return MessageSenderChatType
-}
-
-func (messageSenderChat *MessageSenderChat) GetID() int64{
-	return messageSenderChat.ChatID
 }

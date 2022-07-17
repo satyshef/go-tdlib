@@ -805,7 +805,7 @@ func (client *Client) GetSupergroup(supergroupID int64) (*Supergroup, error) {
 
 // GetSupergroupFullInfo Returns full information about a supergroup or a channel by its identifier, cached for up to 1 minute
 // @param supergroupID Supergroup or channel identifier
-func (client *Client) GetSupergroupFullInfo(supergroupID int32) (*SupergroupFullInfo, error) {
+func (client *Client) GetSupergroupFullInfo(supergroupID int64) (*SupergroupFullInfo, error) {
 	result, err := client.SendAndCatch(UpdateData{
 		"@type":         "getSupergroupFullInfo",
 		"supergroup_id": supergroupID,
@@ -2969,7 +2969,7 @@ func (client *Client) HideSuggestedAction(action SuggestedAction) (*Ok, error) {
 // @param chatID Chat identifier of the message with the button
 // @param messageID Message identifier of the message with the button
 // @param buttonID Button identifier
-func (client *Client) GetLoginURLInfo(chatID int64, messageID int64, buttonID int32) (LoginURLInfo, error) {
+func (client *Client) GetLoginURLInfo(chatID int64, messageID int64, buttonID int64) (LoginURLInfo, error) {
 	result, err := client.SendAndCatch(UpdateData{
 		"@type":      "getLoginUrlInfo",
 		"chat_id":    chatID,
@@ -2986,16 +2986,6 @@ func (client *Client) GetLoginURLInfo(chatID int64, messageID int64, buttonID in
 	}
 
 	switch LoginURLInfoEnum(result.Data["@type"].(string)) {
-
-	case LoginURLInfoOpenType:
-		var loginURLInfo LoginURLInfoOpen
-		err = json.Unmarshal(result.Raw, &loginURLInfo)
-		return &loginURLInfo, err
-
-	case LoginURLInfoRequestConfirmationType:
-		var loginURLInfo LoginURLInfoRequestConfirmation
-		err = json.Unmarshal(result.Raw, &loginURLInfo)
-		return &loginURLInfo, err
 
 	default:
 		return nil, fmt.Errorf("Invalid type")
@@ -5200,34 +5190,6 @@ func (client *Client) GetGroupCall(groupCallID int32) (*GroupCall, error) {
 	var groupCallDummy GroupCall
 	err = json.Unmarshal(result.Raw, &groupCallDummy)
 	return &groupCallDummy, err
-
-}
-
-// JoinGroupCall Joins a group call
-// @param groupCallID Group call identifier
-// @param payload Group join payload, received from tgcalls. Use null to cancel previous joinGroupCall request
-// @param source Caller synchronization source identifier; received from tgcalls
-// @param isMuted True, if the user's microphone is muted
-func (client *Client) JoinGroupCall(groupCallID int32, payload *GroupCallPayload, source int32, isMuted bool) (*GroupCallJoinResponse, error) {
-	result, err := client.SendAndCatch(UpdateData{
-		"@type":         "joinGroupCall",
-		"group_call_id": groupCallID,
-		"payload":       payload,
-		"source":        source,
-		"is_muted":      isMuted,
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	if result.Data["@type"].(string) == "error" {
-		return nil, fmt.Errorf("%s", result.Raw)
-	}
-
-	var groupCallJoinResponse GroupCallJoinResponse
-	err = json.Unmarshal(result.Raw, &groupCallJoinResponse)
-	return &groupCallJoinResponse, err
 
 }
 
