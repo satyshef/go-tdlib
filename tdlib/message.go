@@ -10,7 +10,7 @@ import (
 type Message struct {
 	tdCommon
 	ID                        int64                   `json:"id"`                            // Message identifier; unique for the chat to which the message belongs
-	Sender                    MessageSender           `json:"sender"`                        // The sender of the message
+	Sender                    MessageSender           `json:"sender_id"`                        // The sender of the message
 	ChatID                    int64                   `json:"chat_id"`                       // Chat identifier
 	SendingState              MessageSendingState     `json:"sending_state"`                 // Information about the sending state of the message; may be null
 	SchedulingState           MessageSchedulingState  `json:"scheduling_state"`              // Information about the scheduling state of the message; may be null
@@ -194,7 +194,7 @@ func (message *Message) UnmarshalJSON(b []byte) error {
 	message.MediaAlbumID = tempObj.MediaAlbumID
 	message.RestrictionReason = tempObj.RestrictionReason
 
-	fieldSender, _ := unmarshalMessageSender(objMap["sender"])
+	fieldSender, _ := unmarshalMessageSender(objMap["sender_id"])
 	message.Sender = fieldSender
 
 	fieldSendingState, _ := unmarshalMessageSendingState(objMap["sending_state"])
