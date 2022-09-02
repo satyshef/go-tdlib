@@ -21,6 +21,7 @@ const (
 	ErrorCodeUserNotMutual         = 410
 	ErrorCodeUserTooMuch           = 411
 	ErrorCodeChatNotFound          = 412
+	ErrorCodeChatWriteForbidden    = 413
 
 	// server errors
 	ErrorCodeManyRequests        = 501
@@ -95,6 +96,8 @@ func responseToError(response tdlib.UpdateMsg, update tdlib.UpdateData) *tdlib.E
 		e.Code = ErrorCodeMemberNotFound
 	case "Chat not found":
 		e.Code = ErrorCodeChatNotFound
+	case "CHAT_WRITE_FORBIDDEN":
+		e.Code = ErrorCodeChatWriteForbidden
 	case "Request aborted":
 		e.Code = ErrorCodeAborted
 	}
