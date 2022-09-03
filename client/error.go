@@ -92,6 +92,8 @@ func responseToError(response tdlib.UpdateMsg, update tdlib.UpdateData) *tdlib.E
 		e.Code = ErrorCodeUserKickedFromChat
 	case "User not found":
 		e.Code = ErrorCodeUserNotFound
+	case "Invalid user identifier":
+		e.Code = ErrorCodeUserNotFound
 	case "Member not found":
 		e.Code = ErrorCodeMemberNotFound
 	case "Chat not found":
