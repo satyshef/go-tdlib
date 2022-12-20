@@ -73,6 +73,7 @@ type Config struct {
 
 // NewClient Creates a new instance of TDLib.
 func NewClient(config Config) *Client {
+	fmt.Println("GO-TDLIB dev0.1.0")
 	// Seed rand with time
 	rand.Seed(time.Now().UnixNano())
 	//client := Client{Client: C.td_json_client_create()}
