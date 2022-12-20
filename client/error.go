@@ -100,6 +100,8 @@ func responseToError(response tdlib.UpdateMsg, update tdlib.UpdateData) *tdlib.E
 		e.Code = ErrorCodeChatNotFound
 	case "CHAT_WRITE_FORBIDDEN":
 		e.Code = ErrorCodeChatWriteForbidden
+	case "Not enough rights to invite members to the supergroup chat":
+		e.Code = ErrorCodeChatWriteForbidden
 	case "Request aborted":
 		e.Code = ErrorCodeAborted
 	}

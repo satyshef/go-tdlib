@@ -519,7 +519,7 @@ func (client *Client) sendTdLibParams() {
 
 // SendPhoneNumber sends phone number to tdlib
 func (client *Client) SendPhoneNumber(phoneNumber string) (tdlib.AuthorizationState, error) {
-	phoneNumberConfig := tdlib.PhoneNumberAuthenticationSettings{AllowFlashCall: false, IsCurrentPhoneNumber: false, AllowSmsRetrieverAPI: false}
+	phoneNumberConfig := tdlib.PhoneNumberAuthenticationSettings{AllowFlashCall: false, AllowMissedCall: false, IsCurrentPhoneNumber: true, AllowSmsRetrieverAPI: true}
 	_, err := client.SetAuthenticationPhoneNumber(phoneNumber, &phoneNumberConfig)
 
 	if err != nil {
