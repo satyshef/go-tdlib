@@ -116,21 +116,39 @@ func (client *Client) Run() error {
 }
 
 func (client *Client) Stop() {
-	defer func() { client.Client = nil }()
+	// WORK VERSION 1
+	/*
+		defer func() {
+			client.Client = nil
+		}()
+	*/
+
 	if !client.IsRun() {
 		fmt.Println("DEBUG: Stop in Stop")
 		return
 	}
+
+	// WORK VERSION 1
 	/*
-		fmt.Println("STEP 1")
-		client.Close()
-		fmt.Println("STEP 2")
+		client.isRun = false
+		for client.WaitersLen() != 0 || client.Client != nil {
+			//fmt.Println("Waiters count : ", client.WaitersLen())
+			time.Sleep(time.Second * 1)
+		}
+
 	*/
 	client.isRun = false
-	for client.WaitersLen() != 0 || client.Client != nil {
+	timeout := 20
+	for client.WaitersLen() != 0 && timeout > 0 {
 		//fmt.Println("Waiters count : ", client.WaitersLen())
 		time.Sleep(time.Second * 1)
+		timeout -= 1
 	}
+
+	if client.Client != nil {
+		C.td_json_client_destroy(client.Client)
+	}
+	client.Client = nil
 	//client.destroyInstance()
 	//time.Sleep(time.Second * 2)
 	/*
