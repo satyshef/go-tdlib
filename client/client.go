@@ -145,10 +145,6 @@ func (client *Client) Stop() {
 		timeout -= 1
 	}
 
-	if client.Client != nil {
-		C.td_json_client_destroy(client.Client)
-	}
-	client.Client = nil
 	//client.destroyInstance()
 	//time.Sleep(time.Second * 2)
 	/*
