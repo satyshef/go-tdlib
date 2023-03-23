@@ -119,8 +119,9 @@ type ChatMemberStatusAdministrator struct {
 	CanInviteUsers      bool   `json:"can_invite_users"`       // True, if the administrator can invite new users to the chat
 	CanRestrictMembers  bool   `json:"can_restrict_members"`   // True, if the administrator can restrict, ban, or unban chat members; always true for channels
 	CanPinMessages      bool   `json:"can_pin_messages"`       // True, if the administrator can pin messages; applicable to basic groups and supergroups only
+	//CanManageTopics 	bool   `json:"can_manage_topics"`      // True, if the administrator can manage topics; applicable to forum supergroups only
 	CanPromoteMembers   bool   `json:"can_promote_members"`    // True, if the administrator can add new administrators with a subset of their own privileges or demote administrators that were directly or indirectly promoted by them
-	CanManageVoiceChats bool   `json:"can_manage_voice_chats"` // True, if the administrator can manage voice chats
+	CanManageVideoChats bool   `json:"can_manage_video_chats"` // True, if the administrator can manage video chats
 	IsAnonymous         bool   `json:"is_anonymous"`           // True, if the administrator isn't shown in the chat member list and sends messages anonymously; applicable to supergroups only
 }
 
@@ -144,7 +145,7 @@ func (chatMemberStatusAdministrator *ChatMemberStatusAdministrator) MessageType(
 // @param canPromoteMembers True, if the administrator can add new administrators with a subset of their own privileges or demote administrators that were directly or indirectly promoted by them
 // @param canManageVoiceChats True, if the administrator can manage voice chats
 // @param isAnonymous True, if the administrator isn't shown in the chat member list and sends messages anonymously; applicable to supergroups only
-func NewChatMemberStatusAdministrator(customTitle string, canBeEdited bool, canManageChat bool, canChangeInfo bool, canPostMessages bool, canEditMessages bool, canDeleteMessages bool, canInviteUsers bool, canRestrictMembers bool, canPinMessages bool, canPromoteMembers bool, canManageVoiceChats bool, isAnonymous bool) *ChatMemberStatusAdministrator {
+func NewChatMemberStatusAdministrator(customTitle string, canBeEdited bool, canManageChat bool, canChangeInfo bool, canPostMessages bool, canEditMessages bool, canDeleteMessages bool, canInviteUsers bool, canRestrictMembers bool, canPinMessages bool, canManageTopics bool, canPromoteMembers bool, canManageVideoChats bool, isAnonymous bool) *ChatMemberStatusAdministrator {
 	chatMemberStatusAdministratorTemp := ChatMemberStatusAdministrator{
 		tdCommon:            tdCommon{Type: "chatMemberStatusAdministrator"},
 		CustomTitle:         customTitle,
@@ -157,8 +158,9 @@ func NewChatMemberStatusAdministrator(customTitle string, canBeEdited bool, canM
 		CanInviteUsers:      canInviteUsers,
 		CanRestrictMembers:  canRestrictMembers,
 		CanPinMessages:      canPinMessages,
+		//CanManageTopics:     canManageTopics,
 		CanPromoteMembers:   canPromoteMembers,
-		CanManageVoiceChats: canManageVoiceChats,
+		CanManageVideoChats: canManageVideoChats,
 		IsAnonymous:         isAnonymous,
 	}
 
