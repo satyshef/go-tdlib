@@ -6,7 +6,7 @@ apt install -y cmake build-essential libssl-dev zlib1g-dev gperf ccache libreadl
 git clone https://github.com/tdlib/td.git
 cd td
 #test
-git checkout 0147c97
+#git checkout 0147c97
 mkdir build
 cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..
