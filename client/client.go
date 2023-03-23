@@ -144,34 +144,6 @@ func (client *Client) Stop() {
 		time.Sleep(time.Second * 1)
 		timeout -= 1
 	}
-
-	//client.destroyInstance()
-	//time.Sleep(time.Second * 2)
-	/*
-		if client.IsStopped() || client.StopWork == nil {
-			return
-		}
-		client.StopWork <- true
-	*/
-	/*
-		if client.Status == StatusStopping || client.Status == StatusStopped {
-			fmt.Println("DEBUG: Stop in Stop")
-			return
-		}
-		client.Status = StatusStopping
-
-		for client.WaitersLen() != 0 {
-			fmt.Println("Waiters count : ", client.WaitersLen())
-			time.Sleep(time.Second * 1)
-		}
-		fmt.Println("STAGE 1")
-		//client.Destroy()
-		fmt.Println("STAGE 2")
-		//time.Sleep(time.Second * 3)
-		client.destroyInstance()
-		fmt.Println("STAGE 3")
-		client.Status = StatusStopped
-	*/
 }
 
 func (client *Client) IsRun() bool {
@@ -509,25 +481,22 @@ func (client *Client) Authorize() (tdlib.AuthorizationState, error) {
 func (client *Client) sendTdLibParams() {
 
 	client.Send(tdlib.UpdateData{
-		"@type": "setTdlibParameters",
-		"parameters": tdlib.UpdateData{
-			"@type":                    "tdlibParameters",
-			"use_test_dc":              client.Config.UseTestDataCenter,
-			"database_directory":       client.Config.DatabaseDirectory,
-			"files_directory":          client.Config.FileDirectory,
-			"use_file_database":        client.Config.UseFileDatabase,
-			"use_chat_info_database":   client.Config.UseChatInfoDatabase,
-			"use_message_database":     client.Config.UseMessageDatabase,
-			"use_secret_chats":         client.Config.UseSecretChats,
-			"api_id":                   client.Config.APIID,
-			"api_hash":                 client.Config.APIHash,
-			"system_language_code":     client.Config.SystemLanguageCode,
-			"device_model":             client.Config.DeviceModel,
-			"system_version":           client.Config.SystemVersion,
-			"application_version":      client.Config.ApplicationVersion,
-			"enable_storage_optimizer": client.Config.EnableStorageOptimizer,
-			"ignore_file_names":        client.Config.IgnoreFileNames,
-		},
+		"@type":                    "setTdlibParameters",
+		"use_test_dc":              client.Config.UseTestDataCenter,
+		"database_directory":       client.Config.DatabaseDirectory,
+		"files_directory":          client.Config.FileDirectory,
+		"use_file_database":        client.Config.UseFileDatabase,
+		"use_chat_info_database":   client.Config.UseChatInfoDatabase,
+		"use_message_database":     client.Config.UseMessageDatabase,
+		"use_secret_chats":         client.Config.UseSecretChats,
+		"api_id":                   client.Config.APIID,
+		"api_hash":                 client.Config.APIHash,
+		"system_language_code":     client.Config.SystemLanguageCode,
+		"device_model":             client.Config.DeviceModel,
+		"system_version":           client.Config.SystemVersion,
+		"application_version":      client.Config.ApplicationVersion,
+		"enable_storage_optimizer": client.Config.EnableStorageOptimizer,
+		"ignore_file_names":        client.Config.IgnoreFileNames,
 	}, true)
 }
 
