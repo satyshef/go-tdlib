@@ -12,7 +12,7 @@ type User struct {
 	ID                int64         `json:"id"`                 // User identifier
 	FirstName         string        `json:"first_name"`         // First name of the user
 	LastName          string        `json:"last_name"`          // Last name of the user
-	Username          string        `json:"username"`           // Username of the user
+	Usernames         UserNames     `json:"usernames"`           // Username of the user
 	PhoneNumber       string        `json:"phone_number"`       // Phone number of the user
 	Status            UserStatus    `json:"status"`             // Current online status of the user
 	ProfilePhoto      *ProfilePhoto `json:"profile_photo"`      // Profile photo of the user; may be null
@@ -52,13 +52,13 @@ func (user *User) MessageType() string {
 // @param haveAccess If false, the user is inaccessible, and the only information known about the user is inside this class. It can't be passed to any method except GetUser
 // @param typeParam Type of the user
 // @param languageCode IETF language tag of the user's language; only available to bots
-func NewUser(iD int64, firstName string, lastName string, username string, phoneNumber string, status UserStatus, profilePhoto *ProfilePhoto, isContact bool, isMutualContact bool, isVerified bool, isSupport bool, restrictionReason string, isScam bool, isFake bool, haveAccess bool, typeParam UserType, languageCode string) *User {
+func NewUser(iD int64, firstName string, lastName string, usernames UserNames, phoneNumber string, status UserStatus, profilePhoto *ProfilePhoto, isContact bool, isMutualContact bool, isVerified bool, isSupport bool, restrictionReason string, isScam bool, isFake bool, haveAccess bool, typeParam UserType, languageCode string) *User {
 	userTemp := User{
 		tdCommon:          tdCommon{Type: "user"},
 		ID:                iD,
 		FirstName:         firstName,
 		LastName:          lastName,
-		Username:          username,
+		Usernames:         usernames,
 		PhoneNumber:       phoneNumber,
 		Status:            status,
 		ProfilePhoto:      profilePhoto,
@@ -89,7 +89,7 @@ func (user *User) UnmarshalJSON(b []byte) error {
 		ID                int64         `json:"id"`                 // User identifier
 		FirstName         string        `json:"first_name"`         // First name of the user
 		LastName          string        `json:"last_name"`          // Last name of the user
-		Username          string        `json:"username"`           // Username of the user
+		Usernames         UserNames     `json:"usernames"`           // Username of the user
 		PhoneNumber       string        `json:"phone_number"`       // Phone number of the user
 		ProfilePhoto      *ProfilePhoto `json:"profile_photo"`      // Profile photo of the user; may be null
 		IsContact         bool          `json:"is_contact"`         // The user is a contact of the current user
@@ -111,7 +111,7 @@ func (user *User) UnmarshalJSON(b []byte) error {
 	user.ID = tempObj.ID
 	user.FirstName = tempObj.FirstName
 	user.LastName = tempObj.LastName
-	user.Username = tempObj.Username
+	user.Usernames = tempObj.Usernames
 	user.PhoneNumber = tempObj.PhoneNumber
 	user.ProfilePhoto = tempObj.ProfilePhoto
 	user.IsContact = tempObj.IsContact

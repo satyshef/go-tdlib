@@ -4,7 +4,6 @@ package client
 
 import (
 	"encoding/json"
-
 	"github.com/satyshef/go-tdlib/tdlib"
 )
 
@@ -45,6 +44,7 @@ func (client *Client) GetUser(userID int64) (*tdlib.User, error) {
 	}
 
 	var userDummy tdlib.User
+
 	err = json.Unmarshal(result.Raw, &userDummy)
 	return &userDummy, err
 

@@ -10,7 +10,7 @@ import (
 type Supergroup struct {
 	tdCommon
 	ID                int64            `json:"id"`                   // Supergroup or channel identifier
-	Username          string           `json:"username"`             // Username of the supergroup or channel; empty for private supergroups or channels
+	Usernames         UserNames        `json:"usernames"`             // Username of the supergroup or channel; empty for private supergroups or channels
 	Date              int32            `json:"date"`                 // Point in time (Unix timestamp) when the current user joined, or the point in time when the supergroup or channel was created, in case the user is not a member
 	Status            ChatMemberStatus `json:"status"`               // Status of the current user in the supergroup or channel; custom title will be always empty
 	MemberCount       int32            `json:"member_count"`         // Number of members in the supergroup or channel; 0 if unknown. Currently it is guaranteed to be known only if the supergroup or channel was received through searchPublicChats, searchChatsNearby, getInactiveSupergroupChats, getSuitableDiscussionChats, getGroupsInCommon, or getUserPrivacySettingRules
@@ -48,11 +48,11 @@ func (supergroup *Supergroup) MessageType() string {
 // @param restrictionReason If non-empty, contains a human-readable description of the reason why access to this supergroup or channel must be restricted
 // @param isScam True, if many users reported this supergroup or channel as a scam
 // @param isFake True, if many users reported this supergroup or channel as a fake account
-func NewSupergroup(iD int64, username string, date int32, status ChatMemberStatus, memberCount int32, hasLinkedChat bool, hasLocation bool, signMessages bool, isSlowModeEnabled bool, isChannel bool, isBroadcastGroup bool, isVerified bool, restrictionReason string, isScam bool, isFake bool) *Supergroup {
+func NewSupergroup(iD int64, usernames UserNames, date int32, status ChatMemberStatus, memberCount int32, hasLinkedChat bool, hasLocation bool, signMessages bool, isSlowModeEnabled bool, isChannel bool, isBroadcastGroup bool, isVerified bool, restrictionReason string, isScam bool, isFake bool) *Supergroup {
 	supergroupTemp := Supergroup{
 		tdCommon:          tdCommon{Type: "supergroup"},
 		ID:                iD,
-		Username:          username,
+		Usernames:         usernames,
 		Date:              date,
 		Status:            status,
 		MemberCount:       memberCount,
@@ -81,7 +81,7 @@ func (supergroup *Supergroup) UnmarshalJSON(b []byte) error {
 	tempObj := struct {
 		tdCommon
 		ID                int64  `json:"id"`                   // Supergroup or channel identifier
-		Username          string `json:"username"`             // Username of the supergroup or channel; empty for private supergroups or channels
+		Usernames         UserNames `json:"usernames"`             // Username of the supergroup or channel; empty for private supergroups or channels
 		Date              int32  `json:"date"`                 // Point in time (Unix timestamp) when the current user joined, or the point in time when the supergroup or channel was created, in case the user is not a member
 		MemberCount       int32  `json:"member_count"`         // Number of members in the supergroup or channel; 0 if unknown. Currently it is guaranteed to be known only if the supergroup or channel was received through searchPublicChats, searchChatsNearby, getInactiveSupergroupChats, getSuitableDiscussionChats, getGroupsInCommon, or getUserPrivacySettingRules
 		HasLinkedChat     bool   `json:"has_linked_chat"`      // True, if the channel has a discussion group, or the supergroup is the designated discussion group for a channel
@@ -102,7 +102,7 @@ func (supergroup *Supergroup) UnmarshalJSON(b []byte) error {
 
 	supergroup.tdCommon = tempObj.tdCommon
 	supergroup.ID = tempObj.ID
-	supergroup.Username = tempObj.Username
+	supergroup.Usernames = tempObj.Usernames
 	supergroup.Date = tempObj.Date
 	supergroup.MemberCount = tempObj.MemberCount
 	supergroup.HasLinkedChat = tempObj.HasLinkedChat

@@ -4,7 +4,6 @@ package client
 
 import (
 	"encoding/json"
-
 	"github.com/satyshef/go-tdlib/tdlib"
 )
 
